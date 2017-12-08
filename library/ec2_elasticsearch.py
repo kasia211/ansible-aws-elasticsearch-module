@@ -256,8 +256,7 @@ def main():
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
                 keyword_args['VPCOptions'] = vpc_options
 
-            if module.params.get('state') == 'present':
-                response = client.update_elasticsearch_domain_config(**keyword_args)
+            response = client.update_elasticsearch_domain_config(**keyword_args)
 
     except botocore.exceptions.ClientError as e:
         changed = True
@@ -275,7 +274,8 @@ def main():
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
                 keyword_args['VPCOptions'] = vpc_options
 
-            response = client.create_elasticsearch_domain(**keyword_args)
+            if module.params.get('state') == 'present':
+                response = client.create_elasticsearch_domain(**keyword_args)
 
         else:
             module.fail_json(msg='Error: %s %s' % (str(e.response['Error']['Code']), str(e.response['Error']['Message'])),)
