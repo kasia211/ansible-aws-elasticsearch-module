@@ -32,6 +32,12 @@ options:
     description:
       - Cluster name to be used.
     required: true
+  state:
+    description:
+      - Create or delete cluster.
+      required: false
+      choices: ['present', 'absent']
+      default: present
   elasticsearch_version:
     description:
       - Elasticsearch version to deploy. Default is '2.3'.
@@ -106,6 +112,7 @@ EXAMPLES = '''
 
 - ec2_elasticsearch:
     name: "my-cluster"
+    state: present
     elasticsearch_version: "2.3"
     region: "eu-west-1"
     instance_type: "m3.medium.elasticsearch"
@@ -136,6 +143,7 @@ def main():
     argument_spec = ec2_argument_spec()
     argument_spec.update(dict(
             name = dict(required=True),
+            state = dict(default='present', choices=['present', 'absent']),
             instance_type = dict(required=True),
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
@@ -204,6 +212,11 @@ def main():
         response = client.describe_elasticsearch_domain(DomainName=module.params.get('name'))
         status = response['DomainStatus']
 
+        if module.params.get('state') == 'absent':
+            response = client.delete_elasticsearch_domain(DomainName=module.params.get('name'))
+            changed = True
+            module.exit_json(changed=changed, response=response)
+
         # Modify the provided policy to provide reliable changed detection
         policy_dict = module.params.get('access_policies')
         for statement in policy_dict['Statement']:
@@ -243,7 +256,8 @@ def main():
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
                 keyword_args['VPCOptions'] = vpc_options
 
-            response = client.update_elasticsearch_domain_config(**keyword_args)
+            if module.params.get('state') == 'present':
+                response = client.update_elasticsearch_domain_config(**keyword_args)
 
     except botocore.exceptions.ClientError as e:
         changed = True
